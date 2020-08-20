@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.test.myproj.board.service.impl.BoardMapper">
+
+	<sql id="pageBefore">
+	SELECT *, count(*) over() totcnt FROM(
+		SELECT RN.*, rownum() as rnum FROM( 
+	</sql>
+	<sql id="pageAfter">
+		) RN
+	) WHERE rnum &gt;= #{firstIndex} AND rnum &lt;= #{lastIndex}
+	</sql>
+
+	<!-- 전체 공지글수 -->
+	<select id="getCntBoard" resultType="int">
+		SELECT COUNT(*) FROM t_board
+		WHERE bd_del_yn = 'N'
+	</select>
+
+	<!-- 공지글 목록 -->
+	<select id="selectBoardList" resultType="HashMap">
+		/*selectBoardList */
+		
+		<include refid="pageBefore" />
+		SELECT 
+			bd_idx,
+			bd_writer,
+			bd_title,
+			bd_in_dt
+		FROM t_board
+		WHERE bd_del_yn = 'N'
+		ORDER BY bd_idx desc
+		<include refid="pageAfter" />	
+	</select>
+	
+	<!-- 공지글 상세 정보 -->
+	<select id="selectBoardInfo" resultType="HashMap">
+		/*selectBoardInfo */
+		
+		SELECT 
+			bd_idx,
+			bd_writer,
+			bd_title,
+			bd_content,
+			file_id,
+			bd_in_dt,
+			bd_up_dt
+		FROM t_board
+		WHERE 
+			bd_idx = #{bd_idx}
+			AND bd_del_yn = 'N'
+	</select>
+
+	<!-- 공지글 등록 -->
+	<insert id="insertBoardProc">
+		/*insertBoardProc*/
+
+		<selectKey resultType="int" keyProperty="bd_idx" order="BEFORE">
+			select NVL(MAX(bd_idx),0)+1 FROM t_board
+		</selectKey>
+
+		INSERT INTO t_board
+		(
+			bd_idx,
+			bd_writer,
+			bd_title,
+			bd_content,
+			file_id,
+			bd_in_id
+		)
+		VALUES
+		(
+			#{bd_idx},
+			#{bd_writer},
+			#{bd_title},
+			#{bd_content},
+			#{file_id},
+			#{bd_in_id}
+		)
+	</insert>
+	
+	<!-- 공지글 수정 -->
+	<update id="updateBoardProc">
+		/* updateBoardProc */
+
+		UPDATE t_board
+		SET
+			bd_writer = #{bd_writer},
+			bd_title = #{bd_title},
+			bd_content = #{bd_content},
+			file_id = #{file_id},
+			bd_up_dt = CURRENT_DATE,
+			bd_up_id = #{bd_up_id}
+		WHERE
+			bd_idx = #{bd_idx}
+	</update>
+	
+	<!-- 공지글 삭제 -->
+	<update id="deleteBoardProc">
+		/*deleteBoardProc*/
+
+		UPDATE t_board
+		SET
+			bd_del_yn = 'Y',
+			bd_del_dt = CURRENT_DATE,
+			bd_del_id = #{bd_del_id}
+		WHERE bd_idx IN
+		<choose>
+		    <when test="bd_chk_idx != null and bd_chk_idx != ''">
+				<foreach collection="bd_chk_idx" item="list" index="i" open="(" close=")" separator=",">
+					#{list}
+				</foreach>
+			</when>
+			<otherwise>(#{bd_idx})</otherwise>
+		</choose>
+	</update>
+	
+	<!-- 테이블 존재여부 확인(T_BOARD) -->
+	<!-- <select id="getBoardExist" resultType="int">
+		SELECT COUNT(*) FROM INFORMATION_SCHEMA.tables
+		where table_name = 'T_BOARD'
+	</select> -->
+	
+	<!-- 테이블 생성 -->
+	<update id="createTable">
+		/* createTable */
+
+		CREATE TABLE IF NOT EXISTS t_board(
+		 	bd_idx int not null,
+			bd_writer varchar(60),
+			bd_title varchar(300),
+			bd_content varchar,
+			file_id varchar(30),
+			bd_in_dt date DEFAULT CURRENT_DATE,
+			bd_up_dt date,
+			bd_del_dt date,
+			bd_in_id varchar(150),
+			bd_up_id varchar(150),
+			bd_del_id varchar(150),
+			bd_del_yn char(1) DEFAULT 'N'
+		);
+		
+		CREATE TABLE IF NOT EXISTS t_file(
+		 	file_idx int not null,
+		 	file_id varchar(30),
+		 	file_seq int,
+		 	file_name varchar(300),
+		 	file_in_dt date DEFAULT CURRENT_DATE,
+		 	file_del_yn char(1) DEFAULT 'N'
+		);
+				
+	</update>
+	
+	<!-- 파일 등록 -->
+	<insert id="insertFileProc">
+		/*insertFileProc*/
+
+		<selectKey resultType="int" keyProperty="file_idx" order="BEFORE">
+			select NVL(MAX(file_idx),0)+1 FROM t_file
+		</selectKey>
+
+		INSERT INTO t_file
+		(
+			file_idx,
+		 	file_id,
+		 	file_seq,
+		 	file_name
+		)
+		VALUES
+		(
+			#{file_idx},
+			#{file_id},
+			#{file_seq}, 
+			#{file_name}
+		)
+	</insert>
+	
+	<!-- 파일 목록 -->
+	<select id="selectFileList" resultType="HashMap">
+		/*selectFileList */
+		
+		SELECT 
+			file_idx,
+		 	file_id,
+		 	file_seq,
+		 	file_name
+		FROM t_file
+		WHERE 
+			file_id = #{file_id}
+			AND file_del_yn = 'N'
+		ORDER BY file_seq
+	</select>
+	
+</mapper>
